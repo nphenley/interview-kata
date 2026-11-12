@@ -1,8 +1,19 @@
-type Direction = "N" | "S" | "E" | "W";
+export type Direction = "N" | "S" | "E" | "W";
 
-interface Position {
+export interface Position {
   x: number;
   y: number;
+}
+
+export interface RoverInput {
+  position: Position;
+  direction: Direction;
+  commands: string;
+}
+
+export interface MissionInput {
+  plateau: { maxX: number; maxY: number };
+  rovers: RoverInput[];
 }
 
 const DIRECTIONS: Direction[] = ["N", "E", "S", "W"];
@@ -59,6 +70,8 @@ export class Rover {
     this.direction = turnRight(this.direction);
   }
 
+
+
   moveForward(plateau: Plateau): void {
     const [dx, dy] = getMovementVector(this.direction);
     const newX = this.position.x + dx;
@@ -69,6 +82,8 @@ export class Rover {
       this.position.y = newY;
     }
   }
+
+//  blockedBy(plateau)
 
   executeCommands(commands: string, plateau: Plateau): void {
     for (const command of commands) {
@@ -86,6 +101,7 @@ export class Rover {
     return `${this.position.x} ${this.position.y} ${this.direction}`;
   }
 }
+
 
 export class Plateau {
   private maxX: number;
@@ -135,7 +151,7 @@ export class MarsRoverMission {
     return this.getRoverPositions().join("\n");
   }
 
-  static parseInput(input: string): MarsRoverMission {
+  static parseInput(input: string): MissionInput {
     const lines = input.trim().split("\n");
     if (lines.length % 2 === 0) {
       throw new Error("Each rover needs a position line and a commands line");
@@ -143,25 +159,37 @@ export class MarsRoverMission {
 
     const plateauMatch = lines[0].match(/^(\d+)\s+(\d+)$/);
     if (!plateauMatch) throw new Error(`Invalid plateau: "${lines[0]}"`);
-    const mission = new MarsRoverMission(Number(plateauMatch[1]), Number(plateauMatch[2]));
+    const plateau = { maxX: Number(plateauMatch[1]), maxY: Number(plateauMatch[2]) };
+    const bounds = new Plateau(plateau.maxX, plateau.maxY);
 
+    const rovers: RoverInput[] = [];
     for (let i = 1; i < lines.length; i += 2) {
       const positionMatch = lines[i].match(/^(\d+)\s+(\d+)\s+([NESW])$/);
       if (!positionMatch) throw new Error(`Invalid rover position: "${lines[i]}"`);
       const x = Number(positionMatch[1]);
       const y = Number(positionMatch[2]);
       const direction = positionMatch[3] as Direction;
-      if (!mission.plateau.isWithinBounds(x, y)) {
+      if (!bounds.isWithinBounds(x, y)) {
         throw new Error(`Rover position outside plateau: "${lines[i]}"`);
       }
 
-      const rover = new Rover(x, y, direction);
-      mission.addRover(rover);
-
       const commands = lines[i + 1];
       if (!/^[LRM]*$/.test(commands)) throw new Error(`Invalid commands: "${commands}"`);
-      mission.executeRoverCommands(mission.rovers.length - 1, commands);
+
+      // no rovers on same start position
+      rovers.push({ position: { x, y }, direction, commands });
     }
+
+    return { plateau, rovers };
+  }
+
+  static runMission({ plateau, rovers }: MissionInput): MarsRoverMission {
+    const mission = new MarsRoverMission(plateau.maxX, plateau.maxY);
+
+    rovers.forEach(({ position, direction, commands }, index) => {
+      mission.addRover(new Rover(position.x, position.y, direction));
+      mission.executeRoverCommands(index, commands);
+    });
 
     return mission;
   }

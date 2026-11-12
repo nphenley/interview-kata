@@ -243,25 +243,31 @@ describe("MarsRoverMission", () => {
 });
 
 describe("MarsRoverMission.parseInput", () => {
-  it("should parse example input correctly", () => {
+  it("should return plateau dimensions, rover start positions and commands", () => {
     const input = `5 5
 1 2 N
 LMLMLMLMM
 3 3 E
 MMRMMRMRRM`;
 
-    const mission = MarsRoverMission.parseInput(input);
-    expect(mission.getRoverOutput()).toBe(`1 3 N
-5 1 E`);
+    expect(MarsRoverMission.parseInput(input)).toEqual({
+      plateau: { maxX: 5, maxY: 5 },
+      rovers: [
+        { position: { x: 1, y: 2 }, direction: "N", commands: "LMLMLMLMM" },
+        { position: { x: 3, y: 3 }, direction: "E", commands: "MMRMMRMRRM" },
+      ],
+    });
   });
 
-  it("should parse single rover", () => {
-    const input = `5 5
-0 0 N
+  it("should keep plateau width and height separate", () => {
+    const input = `7 3
+0 0 E
 MMM`;
 
-    const mission = MarsRoverMission.parseInput(input);
-    expect(mission.getRoverOutput()).toBe(`0 3 N`);
+    expect(MarsRoverMission.parseInput(input)).toEqual({
+      plateau: { maxX: 7, maxY: 3 },
+      rovers: [{ position: { x: 0, y: 0 }, direction: "E", commands: "MMM" }],
+    });
   });
 
   it("should handle input with extra whitespace", () => {
@@ -269,20 +275,10 @@ MMM`;
 1 2 N
 LMLMLMLMM`;
 
-    const mission = MarsRoverMission.parseInput(input);
-    expect(mission.getRoverOutput()).toBe(`1 3 N`);
-  });
-
-  it("should handle multiple rovers in sequence", () => {
-    const input = `10 10
-0 0 N
-M
-5 5 E
-M`;
-
-    const mission = MarsRoverMission.parseInput(input);
-    expect(mission.getRoverOutput()).toBe(`0 1 N
-6 5 E`);
+    expect(MarsRoverMission.parseInput(input)).toEqual({
+      plateau: { maxX: 5, maxY: 5 },
+      rovers: [{ position: { x: 1, y: 2 }, direction: "N", commands: "LMLMLMLMM" }],
+    });
   });
 
   it.each([
@@ -336,5 +332,63 @@ MXM`,
     ],
   ])("should throw on %s", (_, input, message) => {
     expect(() => MarsRoverMission.parseInput(input)).toThrow(message);
+  });
+});
+
+describe("MarsRoverMission.runMission", () => {
+  it("should run the example mission", () => {
+    const mission = MarsRoverMission.runMission({
+      plateau: { maxX: 5, maxY: 5 },
+      rovers: [
+        { position: { x: 1, y: 2 }, direction: "N", commands: "LMLMLMLMM" },
+        { position: { x: 3, y: 3 }, direction: "E", commands: "MMRMMRMRRM" },
+      ],
+    });
+
+    expect(mission.getRoverOutput()).toBe(`1 3 N
+5 1 E`);
+  });
+
+  it("should run a single rover", () => {
+    const mission = MarsRoverMission.runMission({
+      plateau: { maxX: 5, maxY: 5 },
+      rovers: [{ position: { x: 0, y: 0 }, direction: "N", commands: "MMM" }],
+    });
+
+    expect(mission.getRoverOutput()).toBe(`0 3 N`);
+  });
+
+  it("should run multiple rovers in sequence", () => {
+    const mission = MarsRoverMission.runMission({
+      plateau: { maxX: 10, maxY: 10 },
+      rovers: [
+        { position: { x: 0, y: 0 }, direction: "N", commands: "M" },
+        { position: { x: 5, y: 5 }, direction: "E", commands: "M" },
+      ],
+    });
+
+    expect(mission.getRoverOutput()).toBe(`0 1 N
+6 5 E`);
+  });
+
+  it("should keep rovers inside the plateau", () => {
+    const mission = MarsRoverMission.runMission({
+      plateau: { maxX: 2, maxY: 2 },
+      rovers: [{ position: { x: 2, y: 2 }, direction: "N", commands: "MRMM" }],
+    });
+
+    expect(mission.getRoverOutput()).toBe(`2 2 E`);
+  });
+
+  it("should run the output of parseInput", () => {
+    const input = `5 5
+1 2 N
+LMLMLMLMM
+3 3 E
+MMRMMRMRRM`;
+
+    const mission = MarsRoverMission.runMission(MarsRoverMission.parseInput(input));
+    expect(mission.getRoverOutput()).toBe(`1 3 N
+5 1 E`);
   });
 });
