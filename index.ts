@@ -114,7 +114,7 @@ export class MarsRoverMission {
   private rovers: Rover[] = [];
 
   constructor(maxX: number, maxY: number) {
-    this.plateau = new Plateau(maxX, maxY); // jfhfhfd
+    this.plateau = new Plateau(maxX, maxY);
   }
 
   addRover(rover: Rover): void {
